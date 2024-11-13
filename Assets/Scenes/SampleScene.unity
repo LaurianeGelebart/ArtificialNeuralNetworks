@@ -547,11 +547,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d58ca114e24b5664f896593a9758c2d3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  nbHiddenNodes: 2
+  nbHiddenNodes: 5
   nbOutput: 2
   nbInput: 4
-  nbTrainIterations: 1000
-  epsilon: 0.1
+  nbTrainIterations: 10000
+  epsilon: 0.2
   spherePrefab: {fileID: 752485951}
   cubePrefab: {fileID: 1022208281}
 --- !u!4 &1961435483

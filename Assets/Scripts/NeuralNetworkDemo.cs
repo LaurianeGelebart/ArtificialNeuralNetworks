@@ -4,10 +4,10 @@ using UnityEngine;
 
 public class NeuralNetworkDemo : MonoBehaviour
 {
-    public int nbHiddenNodes = 2;
+    public int nbHiddenNodes = 10;
     public int nbOutput = 2;
     public int nbInput = 4;
-    public int nbTrainIterations = 1000; 
+    public int nbTrainIterations = 5000; 
     public float epsilon = 0.1f;
 
     public GameObject spherePrefab;
@@ -24,13 +24,14 @@ public class NeuralNetworkDemo : MonoBehaviour
     /// </summary>
     void Start()
     {
-        neuralNetwork = new NeuralNetwork(nbInput, nbHiddenNodes, nbOutput, nbTrainIterations);
         InitDisplayers();
-        CalculateAndDisplayResults();
+        CalculateResultsAndUpdateDisplayers();
     }
 
     /// <summary>
-    /// Surveille les clics pour détecter si un displayer a été sélectionné, et met à jour les valeurs d'entrée ou de sortie attendues en conséquence
+    /// Surveille les clics pour détecter si un displayer a été cliqué
+    /// Met à jour les valeurs d'entrée ou de sortie attendues en conséquence
+    /// Relance l'entrainement et le calcul des sorties par le réseau de neurone sur ce nouveau pattern 
     /// </summary>
     void Update()
     {
@@ -46,8 +47,8 @@ public class NeuralNetworkDemo : MonoBehaviour
                 if (clickedInputDisplayer != null)
                 {
                     clickedInputDisplayer.UpdateObjectValue();
-                    CalculateAndDisplayRow(clickedInputDisplayer.Row); // Recalcule les résultats avec la nouvelle valeur
-                    return; // Sort de la méthode après mise à jour des inputs
+                    CalculateResultsAndUpdateDisplayers();
+                    return; 
                 }
 
                 // Vérifie si un displayer de sortie attendue est cliqué
@@ -55,16 +56,16 @@ public class NeuralNetworkDemo : MonoBehaviour
                 if (clickedExpectedOutputDisplayer != null)
                 {
                     clickedExpectedOutputDisplayer.UpdateObjectValue();
-                    CalculateAndDisplayRow(clickedExpectedOutputDisplayer.Row); // Recalcule les résultats avec la nouvelle valeur
+                    CalculateResultsAndUpdateDisplayers();                    
                 }
             }
         }
     }
 
     /// <summary>
-    /// Initialise les displayers des inputs, des outputs attendus et calculés, et les place dans la scène
+    /// Initialise les displayers des inputs, des outputs attendus et calculés 
     /// </summary>
-    void InitDisplayers()
+   private void InitDisplayers()
     {
         float[][] inputPatterns = GenerateInputPatterns();
         float[][] outputPatterns = GenerateOutputPatterns();
@@ -77,30 +78,28 @@ public class NeuralNetworkDemo : MonoBehaviour
             // Crée et place les displayers d'entrée
             for (int i = 0; i < inputs.Length; i++)
             {
-                Displayer displayer = new Displayer(inputs[i], Type.Input, cubePrefab, row, epsilon);
+                Displayer displayer = new Displayer(inputs[i], Type.Input, cubePrefab, row, i, epsilon);
                 inputDisplayers.Add(displayer);
-                DisplayDisplayer(displayer, i, row);
             }
 
             // Crée et place les displayers des sorties attendues et calculées
             for (int i = 0; i < outputs.Length; i++)
             {
-                Displayer expectedDisplayer = new Displayer(outputs[i], Type.ExpectedOutput, spherePrefab, row, epsilon);
+                Displayer expectedDisplayer = new Displayer(outputs[i], Type.ExpectedOutput, spherePrefab, row, inputs.Length + i, epsilon);
                 expectedOutputDisplayers.Add(expectedDisplayer);
-                DisplayDisplayer(expectedDisplayer, inputs.Length + i, row);
 
-                Displayer calculatedDisplayer = new Displayer(0, Type.CalculatedOutput, spherePrefab, row, epsilon);
+                Displayer calculatedDisplayer = new Displayer(0, Type.CalculatedOutput, spherePrefab, row, inputs.Length + outputs.Length + i, epsilon);
                 calculatedOutputDisplayers.Add(calculatedDisplayer);
-                DisplayDisplayer(calculatedDisplayer, inputs.Length + outputs.Length + i, row);
             }
         }
     }
 
+
     /// <summary>
-    /// Génère des patterns par défaut pour les sorties attendues selon les paramètres de l'application
+    /// Génère le tableau de sorties attendues à partir d'un pattern prédéfini et en fonction du nombre de sorties donné par l'utilisateur : nbOutput
     /// </summary>
-    /// <returns>Tableau des patterns de sortie</returns>
-    float[][] GenerateOutputPatterns()
+    /// <returns>Tableau de sortie</returns>
+    private float[][] GenerateOutputPatterns()
     {
         int defaultNbOutput = 2;
         int defaultOutputLenght = 4;
@@ -131,10 +130,10 @@ public class NeuralNetworkDemo : MonoBehaviour
     }
 
     /// <summary>
-    /// Génère des patterns par défaut pour les entrées selon les paramètres de l'application
+    /// Génère le tableau d'entrées à partir d'un pattern prédéfini et en fonction du nombre d'entrées donné par l'utilisateur : nbInput
     /// </summary>
-    /// <returns>Tableau des patterns d'entrée</returns>
-    float[][] GenerateInputPatterns()
+    /// <returns>Tableau d'entrée</returns>
+    private float[][] GenerateInputPatterns()
     {
         int defaultNbInput = 4;
         int defaultInputLenght = 4;
@@ -164,12 +163,14 @@ public class NeuralNetworkDemo : MonoBehaviour
     }
 
     /// <summary>
-    /// Calcule et affiche les résultats pour chaque pattern d'entrée dans le réseau de neurones
+    /// Calcule les résultats (sorties) pour chaque pattern d'entrée dans le réseau de neurones, puis va mettre à jour l'affichage 
     /// </summary>
-    void CalculateAndDisplayResults()
+    private void CalculateResultsAndUpdateDisplayers()
     {
-        List<Tuple<float[], float[]>> patterns = new List<Tuple<float[], float[]>>();
+        neuralNetwork = new NeuralNetwork(nbInput, nbHiddenNodes, nbOutput, nbTrainIterations);
 
+        // création de la liste de Tuple contenant les entrée et sorties désirées  
+        List<Tuple<float[], float[]>> patterns = new List<Tuple<float[], float[]>>();
         for (int row = 0; row < inputDisplayers.Count / nbInput; row++)
         {
             float[] inputs = new float[nbInput];
@@ -186,17 +187,17 @@ public class NeuralNetworkDemo : MonoBehaviour
             patterns.Add(Tuple.Create(inputs, expectedOutputs));
         }
 
-        neuralNetwork.Train(patterns);
-        List<float[]> results = neuralNetwork.Test(patterns);
+        neuralNetwork.Train(patterns); // entraine le réseau de neurones 
+        List<float[]> results = neuralNetwork.Test(patterns); // récupère les sorties
 
-        DisplayResults(results);
+        UpdateDisplayers(results);
     }
 
     /// <summary>
-    /// Affiche les résultats calculés pour chaque ligne, en mettant à jour les displayers de sorties calculées
+    /// Met à jours les displayers avec les résultats de sortie calculés pour chaque ligne (ce qui met à jour l'affichage)
     /// </summary>
     /// <param name="results">Liste des résultats calculés</param>
-    void DisplayResults(List<float[]> results)
+    private void UpdateDisplayers(List<float[]> results)
     {
         int row = 0;
         foreach (var outputs in results)
@@ -205,57 +206,10 @@ public class NeuralNetworkDemo : MonoBehaviour
             {
                 int outputIndex = row * outputs.Length + i;
                 calculatedOutputDisplayers[outputIndex].UpdateObjectValue(outputs[i]);
-                DisplayDisplayer(calculatedOutputDisplayers[outputIndex], inputDisplayers.Count / nbInput + expectedOutputDisplayers.Count / nbOutput + i, row); 
             }
             row++;
         }
     }
 
-    /// <summary>
-    /// Positionne le displayer dans la scène à une position spécifique
-    /// </summary>
-    /// <param name="displayer">Displayer à afficher</param>
-    /// <param name="col">Colonne où placer le displayer</param>
-    /// <param name="row">Ligne où placer le displayer</param>
-    void DisplayDisplayer(Displayer displayer, int col, int row)
-    {
-        float xOffset = 2.0f;
-        float yOffset = -1.5f;
 
-        Vector3 position = new Vector3(col * xOffset, row * yOffset, 0);
-        displayer.GameObject.transform.position = position;
-        displayer.GameObject.GetComponent<Renderer>().material.color = displayer.GetDisplayerColor();
-    }
-
-    /// <summary>
-    /// Calcule et affiche les résultats pour une ligne spécifique de données
-    /// </summary>
-    /// <param name="row">Ligne à calculer et afficher</param>
-    void CalculateAndDisplayRow(int row)
-    {
-        neuralNetwork = new NeuralNetwork(nbInput, nbHiddenNodes, nbOutput, nbTrainIterations);
-
-        float[] inputs = new float[nbInput];
-        float[] expectedOutputs = new float[nbOutput];
-
-        for (int i = 0; i < nbInput; i++)
-        {
-            inputs[i] = inputDisplayers[row * nbInput + i].ObjectValue;
-        }
-        for (int i = 0; i < nbOutput; i++)
-        {
-            expectedOutputs[i] = expectedOutputDisplayers[row * nbOutput + i].ObjectValue;
-        }
-        Tuple<float[], float[]> pattern = new Tuple<float[], float[]>(inputs, expectedOutputs);
-
-        neuralNetwork.Train(pattern);
-        float[] outputs = neuralNetwork.Test(pattern);
-
-        for (int i = 0; i < outputs.Length; i++)
-         {
-            int outputIndex = row * outputs.Length + i;
-            calculatedOutputDisplayers[outputIndex].UpdateObjectValue(outputs[i]);
-            DisplayDisplayer(calculatedOutputDisplayers[outputIndex], inputDisplayers.Count / nbInput + expectedOutputDisplayers.Count / nbOutput + i, row); 
-        }
-    }
 }

@@ -73,21 +73,6 @@ public class NeuralNetwork
     }
 
     /// <summary>
-    /// Entraîne le réseau de neurones pour un seul modèle sur un nombre d'itérations spécifié
-    /// </summary>
-    /// <param name="pattern">Tuple contenant les entrées et les sorties cibles</param>
-    /// <param name="learningRate">Taux d'apprentissage pour la mise à jour des poids (par défaut 0.5)</param>
-    /// <param name="momentum">Momentum pour la mise à jour des poids (par défaut 0.1)</param>
-    public void Train(Tuple<float[], float[]> pattern, float learningRate = 0.5f, float momentum = 0.1f)
-    {
-        for (int i = 0; i < iterations; i++)
-        {
-            float error = TrainPattern(pattern, learningRate, momentum);
-            ErrorLog(i, error);
-        }
-    }
-
-    /// <summary>
     /// Teste le réseau de neurones avec plusieurs modèles d'entrée/sortie
     /// </summary>
     /// <param name="patterns">Liste des tuples contenant les entrées et les sorties cibles</param>
@@ -95,29 +80,16 @@ public class NeuralNetwork
     public List<float[]> Test(List<Tuple<float[], float[]>> patterns)
     {
         List<float[]> results = new List<float[]>();
-
         foreach (var pattern in patterns)
         {
-            float[] outputs = Test(pattern);
+            float[] inputs = pattern.Item1;
+            float[] expectedoutputs = pattern.Item2;
+            float[] outputs = Update(inputs);
+            ConsoleLog(inputs, expectedoutputs, outputs);
             results.Add(outputs);
         }
-
         return results;
     }
-
-    /// <summary>
-    /// Teste le réseau de neurones avec un seul modèle d'entrée/sortie
-    /// </summary>
-    /// <param name="pattern">Tuple contenant les entrées et les sorties cibles</param>
-    /// <returns>Sortie obtenue pour le modèle testé</returns>
-    public float[] Test(Tuple<float[], float[]> pattern)
-    {
-        float[] inputs = pattern.Item1;
-        float[] outputs = Update(inputs);
-        ConsoleLog(inputs, outputs);
-        return outputs;
-    }
-
 
 
     /// <summary>
@@ -313,9 +285,9 @@ public class NeuralNetwork
     /// </summary>
     /// <param name="inputs">Valeurs d'entrée</param>
     /// <param name="outputs">Valeurs de sortie</param>
-    private void ConsoleLog(float[] inputs, float[] outputs)
+    private void ConsoleLog(float[] inputs, float[] expectedOutputs, float[] outputs)
     {
-        Debug.Log($"Input : {string.Join(", ", inputs)} -> Output : {string.Join(", ", outputs)}");
+        Debug.Log($"Input : {string.Join(", ", inputs)}, Expected outputs : {string.Join(", ", expectedOutputs)} -> Output : {string.Join(", ", outputs)}");
     }
 
     /// <summary>
